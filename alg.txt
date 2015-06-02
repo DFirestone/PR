@@ -1,0 +1,58 @@
+type locker is record of
+	string : gender
+	int : occupancy
+end record
+
+locker[] lockers[3]
+int myLockerId = -1
+string gender = ("male"|"famale")
+//customers - wszystkie dzialajace procesy
+
+when e_enter_to_locker() do
+
+	while (myLockerId < 0) do
+	//uaktualnienie wszystkich szatni broadcast-em
+	for all customer in customers do
+		e_send(customer, TRY_ENTER_MSG)
+	end for
+	
+	//uaktualniamy stan szatnii
+	for all customer in customers do
+		int customerLockerId
+		e_receive(msg, customerLockerId)
+		if (msg == MY_LOCKER_ID_MSG) then
+			lockerRooms[customerLockerId] += 1
+		end if
+	end for
+	
+	//wybor szatni
+	
+		for all lockerRoom in lockers do
+			if (lockerRoom.occupancy < 1) or (lockerRoom.gender == gender) then
+				if myLockerId == -1 then
+					myLockerId = lockerRoom
+				else
+	//jesli sa dwie szatnie zapełnione osobami naszej plci				
+	//wybieramy szatnie w ktorej jest większe zapelnienie
+					if (myLockerId.occupancy < lockerRoom.occupancy) then
+						myLockerId = lockerRoom
+					end if
+				end if		
+			end if
+		end for
+	end while
+
+	//wejscie do szatni, informujemy innych broadcastem
+	for all customer in customers do
+		e_send(ENTER_MSG, myLockerId)
+	end for
+
+end when
+
+
+when e_return_to_locker() do
+	//zwalnianie szatni (broadcast)
+	for all customer in customers do
+		e_send(EXIT_MSG, myLockerId)
+	end for
+end when

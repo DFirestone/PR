@@ -65,8 +65,8 @@ e_send Klient chce wejść do wolnej (i odpowiadającej mu płcią) szatni:
 1. Proces wysyła żądanie wejścia do szatni M1 wraz ze swoim znacznikiem czasowym i dodaje swoje żądanie do własnej kolejki.
 2. Powtarzamy punkt 1. dla pozostałych szatni.
 3. Wchodzimy do pierwszej szatni na wejście do której dostaniemy zezwolenie od wszystkich pozostałych procesów (klientów).
-4. Przed wejściem do sekcji krytycznej usuwamy swoje żądania ze swoich kolejek do szatni nie wybranych.
-5. Po wyjściu z sekcji krytycznej 
+4. Przed wejściem do sekcji krytycznej usuwamy swoje żądanie z kolejek do szatni którzych nie wybraliśmy.
+5. Po wyjściu z sekcji krytycznej usuwamy własne żądanie z kolejki żądań do opuszczanej właśnie szatni oraz wysyłamy odpowiedzi na wszystkie żądania w kolejce a następnie usuwamy je z kolejki. 
 
 e_receive Klient (proces) Pj otrzymuje żądanie wejścia do szatni Mk przez Proces Pi
 1. Proces Pj sprawdza czy wg jego kolejki żądań proces Pj może wejść i wysyła odpowiedź typu ZEZWOLENE procesowi Pi.

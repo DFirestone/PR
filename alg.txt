@@ -1,10 +1,13 @@
+-------------------------------------------------------
+------- D A T A   D E F I N I T I O N -----------------
+-------------------------------------------------------
 type CHANGING_ROOM is record of
-	capacity : Integer /* wolne miejsca w szatni */
-	sexOcupancy : { "M", "F", "-" }	/* jaka plec zajmuje obecnie dana sale */	
+	capacity : INTEGER /* capacity of ch_r (available places) */
+	sexOcupancy : { "M", "F", "-" }	/* what sex occupies the ch_r */	
 end
 
 type CUSTOMER is record of
-	userId : Integer
+	userId : INTEGER
 	sex: { "M", "F" }
 	ocupancy: { 0, 1, 2, 3, 4, 5 } 	/*	0 - none ocupancy
 						1 - 1st changing room
@@ -15,7 +18,7 @@ type CUSTOMER is record of
 end
 
 type MESSAGE is record of
-	messegeType : Integer 	/*	1 - ENTER_REQUEST
+	messegeType : INTEGER 	/*	1 - ENTER_REQUEST
 					2 - REPLY_ENTER_REQUEST
 					3 - RELEASE_LOCKER_MESSAGE */
 	sender : CUSTOMER
@@ -23,16 +26,58 @@ type MESSAGE is record of
 end
 
 type PACKET is record of
-	tag : Integer /* typ wiadomosci */
-	mId : Integer /* identyfikator wiadomosci */
-	sId : Integer /* identyfikator nadawcy wiadomosci */
-	rId : Integer /* identyfikator adresata wiadomosci */
+	clock : INTEGER	/* nee
+	tag : INTEGER /* message type */
+	mId : INREGER /* message id */
+	sId : INTEGER /* sender id */
+	rId : INTEGER /* receiver id */
 	
-	msg : MESSAGE /* przesylana wiadomosc */
+	msg : MESSAGE /* message to send */
 end
 
 
+-------------------------------------------------------------------------------
+------- A D A P T E D   L A M P O R T   A L G O R I T H M ---------------------
+-------------------------------------------------------------------------------
 
+msgIn	 	: MESSAGE
+pcktOut		: PACKET
+clock_i		: INTEGER
+d		: INTEGER
+
+when e_send(Pi, Pj, msgOut:MESSAGE) do
+	clock_i := clock_i + d
+	pckOut.clock := clock_i
+	pcktOut.msg := msgOut
+	send(Qi, Qj, pcktOut)
+end when
+
+when e_receive(Qj, Qi, pcktIn : PACKET) do
+	clock_i := max(clock_i, pcktIn.clock)+d
+	msgIn := pcktIn.data
+	deliver(Pj, Pi, msgIn)
+end when
+
+
+3 kolejki - po jednej dla każdej szatni, plus 1 dla prysznicy
+
+e_send Klient chce wejść do wolnej (i odpowiadającej mu płcią) szatni:
+1. Proces wysyła żądanie wejścia do szatni M1 wraz ze swoim znacznikiem czasowym i dodaje swoje żądanie do własnej kolejki.
+2. Powtarzamy punkt 1. dla pozostałych szatni.
+3. Wchodzimy do pierwszej szatni na wejście do której dostaniemy zezwolenie od wszystkich pozostałych procesów (klientów).
+4. Przed wejściem do sekcji krytycznej usuwamy swoje żądania ze swoich kolejek do szatni nie wybranych.
+5. Po wyjściu z sekcji krytycznej 
+
+e_receive Klient (proces) Pj otrzymuje żądanie wejścia do szatni Mk przez Proces Pi
+1. Proces Pj sprawdza czy wg jego kolejki żądań proces Pj może wejść i wysyła odpowiedź typu ZEZWOLENE procesowi Pi.
+ZEZWOLENIE jest wysłane jeżeli zachodzą następujące warunki:
+	a) Żądanie procesu byłoby wstawione w kolejce (uszeregowanej względem znaczników czasowych)
+	na najdalej z-tej pozycji gdzie z<=M (M-pojemnośc szatni)
+	b) wszystkie procesy w kolejce żądań od pozycji 1 do z-1 oraz proces Pi mają taką samą płeć jak proces na pozycji 1
+2. Jeśli którykolwiek z warunków 1a lub 1b jest niespełniony otrzymane żądanie procesu Pi zostaje dodane do kolejki żądań dostępu do danej szatni
+
+
+Procedura obsługi sali z natryskami przebiega podobnie z tym, że jest jedna kolejka (nie obowiązuje punkt 2. z e_send
 
 
 ----------------------------------------------

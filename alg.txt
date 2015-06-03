@@ -1,3 +1,44 @@
+type CHANGING_ROOM is record of
+	capacity : Integer /* wolne miejsca w szatni */
+	sexOcupancy : { "M", "F", "-" }	/* jaka plec zajmuje obecnie dana sale */	
+end
+
+type CUSTOMER is record of
+	userId : Integer
+	sex: { "M", "F" }
+	ocupancy: { 0, 1, 2, 3, 4, 5 } 	/*	0 - none ocupancy
+						1 - 1st changing room
+						2 - 2nd changing room
+						3 - 3rd changing room
+						4 - showers
+						5 - pool */
+end
+
+type MESSAGE is record of
+	messegeType : Integer 	/*	1 - ENTER_REQUEST
+					2 - REPLY_ENTER_REQUEST
+					3 - RELEASE_LOCKER_MESSAGE */
+	sender : CUSTOMER
+	receiverId : Integer
+end
+
+type PACKET is record of
+	tag : Integer /* typ wiadomosci */
+	mId : Integer /* identyfikator wiadomosci */
+	sId : Integer /* identyfikator nadawcy wiadomosci */
+	rId : Integer /* identyfikator adresata wiadomosci */
+	
+	msg : MESSAGE /* przesylana wiadomosc */
+end
+
+
+
+
+
+----------------------------------------------
+------- O L D   V E R S I O N ----------------
+----------------------------------------------
+
 type locker is record of
 	string : gender
 	int : occupancy

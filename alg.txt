@@ -1,68 +1,121 @@
+Gdzie dodac sprawdzanie płci?
+Zaimplementowac koniec sekcji krytycznej
+
+
+Wpuszczanie ludzi
+Grupowanie w kolejce po M ludzi tej samej płci
+
+ALGORYTM MA BYĆ TAK NAPISANY, ŻEBY OSOBA TRZECIA MOGŁA GO ZAIMPLEMENTOWAĆ
+
+
 -------------------------------------------------------
 ------- D A T A   D E F I N I T I O N -----------------
 -------------------------------------------------------
 
 //------------_DO POPRRAWY-------------------------//
-type CHANGING_ROOM is record of
-	capacity : INTEGER /* capacity of ch_r (available places) */
-	sexOcupancy : { "M", "F", "-" }	/* what sex occupies the ch_r */	
-end
 
 type CUSTOMER is record of
-	userId : INTEGER
+	id : INTEGER
 	sex: { "M", "F" }
-	ocupancy: { 0, 1, 2, 3, 4, 5 } 	/*	0 - none ocupancy
-						1 - 1st changing room
-						2 - 2nd changing room
-						3 - 3rd changing room
-						4 - showers
-						5 - pool */
 end
 
-type MESSAGE is record of
-	messegeType : INTEGER 	/*	1 - ENTER_REQUEST
-					2 - REPLY_ENTER_REQUEST
-					3 - RELEASE_LOCKER_MESSAGE */
-	sender : CUSTOMER
-	receiverId : Integer
+type REQUEST is record of
+	timeStamp : INTEGER
+	customer : CUSTOMER
 end
 
 type PACKET is record of
-	clock : INTEGER	/* nee
-	tag : INTEGER /* message type */
-	mId : INREGER /* message id */
-	sId : INTEGER /* sender id */
-	rId : INTEGER /* receiver id */
-	
-	msg : MESSAGE /* message to send */
+	request : REQUEST
+	msgType : INTEGER 	/*	1 - ENTER_REQUEST
+					2 - REPLY_ENTER_REQUEST */
 end
 
+-------------------------------------------
+------- C O N S T A N T S -----------------
+-------------------------------------------
 
--------------------------------------------------------------------------------
-------- A D A P T E D   L A M P O R T   A L G O R I T H M ---------------------
--------------------------------------------------------------------------------
+//-------- Tagi wiadomości ------------//
+CHANGING_ROOM_0 : CONST INTEGER
+CHANGING_ROOM_1 : CONST INTEGER
+CHANGING_ROOM_2 : CONST INTEGER
+SHOWER 			: CONST INTEGER
+
+//-------- Typy wiadomości ------------//
+ENTER_REQUEST 			: CONST INTEGER
+REPLY_ENTER_REQUEST 	: CONST INTEGER
+
+//-------- Inne ------------//
+CHANGING_ROOM_CAPACITY 	: CONST INTEGER
+SHOWER_CAPACITY 		: CONST INTEGER
+
+----------------------------------------------------------------------------
+------- A D A P T E D   L A M P O R T   A L G O R I T H M ------------------
+----------------------------------------------------------------------------
 
 
 // -------------- DZIAŁANIA MONITORA -----------------------//
-msgIn	 	: MESSAGE
+msgIn	 	: INTEGER
 pcktOut		: PACKET
 clock_i		: INTEGER
-d		: INTEGER
+d			: INTEGER
 
-when e_send(Pi, Pj, msgOut:MESSAGE) do
+nProcesses : INTEGER // liczba procesów
+
+request 	: REQUEST
+requestQueue : REQUEST[][] /* requestQueue[1][0] - szatnia nr 1, pierwszy w kolejce */
+requestAck	: INTEGER[] /* tablica liczby potwierdzen poszczególnych pomieszczeń 
+							0 - szatnia 0, 
+							1 - szatnia 1, 
+							2 - szatnia 2, 
+							3 - prysznic */
+
+
+
+when e_send(Pi, Pj, msgType:INTEGER, msgTag:INTEGER) do
 	clock_i := clock_i + d
-	pckOut.clock := clock_i
-	pcktOut.msg := msgOut
-	send(Qi, Qj, pcktOut)
+
+	pcktOut.msgType := msgType
+
+	if (msgTag == ENTER_REQUEST) then
+		request.timeStamp = clock_i
+		request.customer.id = id
+		request.customer.sex = sex 
+
+		pcktOut.request = request
+
+		requestQueue[0] = request
+	end if
+
+	send(Pi, Pj, pcktOut, msgTag)
 end when
 
-when e_receive(Qj, Qi, pcktIn : PACKET) do
-	clock_i := max(clock_i, pcktIn.clock)+d
-	msgIn := pcktIn.data
-	deliver(Pj, Pi, msgIn)
+when e_receive(Qj, Qi, pcktIn : PACKET, msgTag : INTEGER) do
+	clock_i := max(clock_i, pcktIn.request.timeStamp) + d
+
+	if (msgTag == ENTER_REQUEST) then
+		if(requestQueue[msgTag][0] != NULL) then
+			if (requestQueue[msgTag][0].timeStamp > pcktIn.request.timeStamp) then
+//sprawdzanie M pierwszych ludzi w kolejce(tej samej płci)
+				send(Pi, Pj, REPLY_ENTER_REQUEST, msgTag)
+			else
+				addToSortedQueue(msgTag,pcktIn.request)
+			end if
+		else
+			send(Pi, Pj, REPLY_ENTER_REQUEST, msgTag)
+		end if
+	else
+		requestAck[msgTag] += 1
+
+		if (requestAck[msgTag] > nProcesses) then
+			for i in [0..3] do
+				if (i != msgTag) then
+					deleteMyselfFromQueue(i)
+				end if
+			end for
+		end if
+	end if
+
 end when
-
-
 
 
 3 kolejki - po jednej dla każdej szatni, plus 1 dla prysznicy
@@ -70,10 +123,10 @@ end when
 
 // ALGORYTM DZIAŁANIA PROCESÓW KLIENTÓW
 e_send Klient chce wejść do wolnej (i odpowiadającej mu płcią) szatni:
-1. Proces wysyła żądanie wejścia do szatni M1 wraz ze swoim znacznikiem czasowym i dodaje swoje żądanie do własnej kolejki.
+1. Proces wysyła żądanie wejścia do szatni M1(send z tagiem = CHANGING_ROOM_1) wraz ze swoim znacznikiem czasowym i dodaje swoje żądanie do własnej kolejki.
 2. Powtarzamy punkt 1. dla pozostałych szatni.
-3. Wchodzimy do pierwszej szatni na wejście do której dostaniemy zezwolenie od wszystkich pozostałych procesów (klientów).
-4. Przed wejściem do sekcji krytycznej usuwamy swoje żądanie z kolejek do szatni którzych nie wybraliśmy.
+3. Wchodzimy do pierwszej szatni na wejście do której dostaniemy zezwolenie od (wszystkich - (pojemność sztani+1)) pozostałych procesów (klientów).
+4. Przed wejściem do sekcji krytycznej usuwamy swoje żądanie z kolejek do szatni którzych nie wybraliśmy oraz wysyłamy odpowiedzi na wszystkie żądania w kolejkach a następnie usuwamy je z kolejek.
 5. Po wyjściu z sekcji krytycznej usuwamy własne żądanie z kolejki żądań do opuszczanej właśnie szatni oraz wysyłamy odpowiedzi na wszystkie żądania w kolejce a następnie usuwamy je z kolejki. 
 
 e_receive Klient (proces) Pj otrzymuje żądanie wejścia do szatni Mk przez Proces Pi
@@ -86,67 +139,3 @@ ZEZWOLENIE jest wysłane jeżeli zachodzą następujące warunki:
 
 
 Procedura obsługi sali z natryskami przebiega podobnie z tym, że jest jedna kolejka (nie obowiązuje punkt 2. z e_send
-
-
-----------------------------------------------
-------- O L D   V E R S I O N ----------------
-----------------------------------------------
-
-type locker is record of
-	string : gender
-	int : occupancy
-end record
-
-locker[] lockers[3]
-int myLockerId = -1
-string gender = ("male"|"famale")
-//customers - wszystkie dzialajace procesy
-
-when e_enter_to_locker() do
-
-	while (myLockerId < 0) do
-	//uaktualnienie wszystkich szatni broadcast-em
-	for all customer in customers do
-		e_send(customer, TRY_ENTER_MSG)
-	end for
-	
-	//uaktualniamy stan szatnii
-	for all customer in customers do
-		int customerLockerId
-		e_receive(msg, customerLockerId)
-		if (msg == MY_LOCKER_ID_MSG) then
-			lockerRooms[customerLockerId] += 1
-		end if
-	end for
-	
-	//wybor szatni
-	
-		for all lockerRoom in lockers do
-			if (lockerRoom.occupancy < 1) or (lockerRoom.gender == gender) then
-				if myLockerId == -1 then
-					myLockerId = lockerRoom
-				else
-	//jesli sa dwie szatnie zapełnione osobami naszej plci				
-	//wybieramy szatnie w ktorej jest większe zapelnienie
-					if (myLockerId.occupancy < lockerRoom.occupancy) then
-						myLockerId = lockerRoom
-					end if
-				end if		
-			end if
-		end for
-	end while
-
-	//wejscie do szatni, informujemy innych broadcastem
-	for all customer in customers do
-		e_send(ENTER_MSG, myLockerId)
-	end for
-
-end when
-
-
-when e_return_to_locker() do
-	//zwalnianie szatni (broadcast)
-	for all customer in customers do
-		e_send(EXIT_MSG, myLockerId)
-	end for
-end when

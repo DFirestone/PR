@@ -2,9 +2,6 @@ Gdzie dodac sprawdzanie płci?
 Zaimplementowac koniec sekcji krytycznej
 
 
-Wpuszczanie ludzi
-Grupowanie w kolejce po M ludzi tej samej płci
-
 ALGORYTM MA BYĆ TAK NAPISANY, ŻEBY OSOBA TRZECIA MOGŁA GO ZAIMPLEMENTOWAĆ
 
 
@@ -122,20 +119,22 @@ end when
 
 
 // ALGORYTM DZIAŁANIA PROCESÓW KLIENTÓW
-e_send Klient chce wejść do wolnej (i odpowiadającej mu płcią) szatni:
+e_send - Klient chce wejść do wolnej (i odpowiadającej mu płcią) szatni:
+Aby wejść do sekcji krytycznej:
 1. Proces wysyła żądanie wejścia do szatni M1(send z tagiem = CHANGING_ROOM_1) wraz ze swoim znacznikiem czasowym i dodaje swoje żądanie do własnej kolejki.
 2. Powtarzamy punkt 1. dla pozostałych szatni.
-3. Wchodzimy do pierwszej szatni na wejście do której dostaniemy zezwolenie od (wszystkich - (pojemność sztani+1)) pozostałych procesów (klientów).
+3. Wchodzimy do pierwszej szatni na wejście do której dostaniemy zezwolenie od N-K pozostałych procesów (klientów), gdzie N to liczba wszystkich procesów a K to pojemność szatni.
 4. Przed wejściem do sekcji krytycznej usuwamy swoje żądanie z kolejek do szatni którzych nie wybraliśmy oraz wysyłamy odpowiedzi na wszystkie żądania w kolejkach a następnie usuwamy je z kolejek.
 5. Po wyjściu z sekcji krytycznej usuwamy własne żądanie z kolejki żądań do opuszczanej właśnie szatni oraz wysyłamy odpowiedzi na wszystkie żądania w kolejce a następnie usuwamy je z kolejki. 
 
 e_receive Klient (proces) Pj otrzymuje żądanie wejścia do szatni Mk przez Proces Pi
+Kiedy proces Pj uzyska ŻĄDANIE wejścia do sekcji krytycznej od procesu Pi:
 1. Proces Pj sprawdza czy wg jego kolejki żądań proces Pj może wejść i wysyła odpowiedź typu ZEZWOLENE procesowi Pi.
 ZEZWOLENIE jest wysłane jeżeli zachodzą następujące warunki:
-	a) Żądanie procesu byłoby wstawione w kolejce (uszeregowanej względem znaczników czasowych)
-	na najdalej z-tej pozycji gdzie z<=M (M-pojemnośc szatni)
-	b) wszystkie procesy w kolejce żądań od pozycji 1 do z-1 oraz proces Pi mają taką samą płeć jak proces na pozycji 1
-2. Jeśli którykolwiek z warunków 1a lub 1b jest niespełniony otrzymane żądanie procesu Pi zostaje dodane do kolejki żądań dostępu do danej szatni
+	a) sam proces Pj nie jest w sekcji krytycznej, i nie ma zamiaru wchodzić
+	LUB
+	b) proces Pj chce wejść do sekcji krytycznej ale znacznik czasowy ŻĄDANIA procesu Pi jest mniejszy niż procesu Pj
+2. Jeśli nie można wysłać ZEZWOLENIA, ŻĄDANIE procesu Pi zostaje dodane do kolejki żądań dostępu do danej szatni na odpowiedniej pozycji (ŻĄDANIA posortowane względem znaczników czasowych).
 
 
-Procedura obsługi sali z natryskami przebiega podobnie z tym, że jest jedna kolejka (nie obowiązuje punkt 2. z e_send
+Procedura obsługi sali z natryskami przebiega podobnie z tym, że jest jedna kolejka (nie obowiązuje punkt 2. z e_send).
